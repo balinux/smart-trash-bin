@@ -14,7 +14,9 @@ DHT dht(DHTPIN, DHTTYPE);
 
 const char *ssid = "TP";
 const char *password = "123@khalid";
-const char *mqtt_server = "192.168.1.7";
+const char *mqtt_server = "192.168.1.6";
+const char *mqtt_user = "4c";
+const char *mqtt_pass = "123123";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -62,10 +64,15 @@ void callback(char *topic, byte *message, unsigned int length) {
 void reconnect() {
   while (!client.connected()) {
     Serial.print("🔄 Menghubungkan ke MQTT...");
+
     // ✅ Gunakan unique client ID
     String clientId = "ESP32-" + String(random(0xffff), HEX);
-    if (client.connect(clientId.c_str())) {
+
+    // login menggunakan username dan password
+    if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+
       Serial.println("✅ Connected!");
+
       // ✅ Subscribe ulang setiap reconnect
       bool subResult = client.subscribe("kampus/#");
       Serial.print("📡 Subscribe kampus/# : ");
