@@ -4,7 +4,10 @@ import axios from "axios";
 import config from "./edge/config.js";
 import rules from "./edge/rules.js";
 
-const client = mqtt.connect(config.mqttBroker);
+const client = mqtt.connect(config.mqttBroker, {
+    username: config.mqttUsername,
+    password: config.mqttPassword
+});
 
 client.on("connect", () => {
 
@@ -58,14 +61,14 @@ client.on("message", async (topic, message) => {
 
     const url = `http://demo.thingsboard.io/api/v1/${config.thingsboard.token}/telemetry`;
 
-    // await axios.post(url, {
-    //     temperature: data.temperature,
-    //     kipas: action.kipas || "OFF",
-    //     lampu: action.lampu || "OFF"
-    // }, {
-    //     headers: {
-    //         "Content-Type": "application/json"
-    //     }
-    // });
+    await axios.post(url, {
+        temperature: data.temperature,
+        kipas: action.kipas || "OFF",
+        lampu: action.lampu || "OFF"
+    }, {
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
 
 });
