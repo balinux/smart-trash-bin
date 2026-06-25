@@ -13,7 +13,7 @@ client.on("connect", () => {
 
     console.log("Edge Connected terhubung ke broker");
 
-    client.subscribe(config.topics.suhu);
+    client.subscribe(config.topics.trashbin);
 
 });
 
@@ -35,19 +35,19 @@ client.on("message", async (topic, message) => {
     // EXECUTE
     // ======================
 
-    if (action.kipas) {
+    // if (action.kipas) {
 
-        client.publish(config.topics.kipas, action.kipas);
-        console.log("Execute kipas:", action.kipas);
+    //     client.publish(config.topics.kipas, action.kipas);
+    //     console.log("Execute kipas:", action.kipas);
 
-    }
+    // }
 
-    if (action.lampu) {
+    // if (action.lampu) {
 
-        client.publish(config.topics.lampu, action.lampu);
-        console.log("Execute lampu:", action.lampu);
+    //     client.publish(config.topics.lampu, action.lampu);
+    //     console.log("Execute lampu:", action.lampu);
 
-    }
+    // }
 
     // ======================
     // SEND TO CLOUD
@@ -61,14 +61,14 @@ client.on("message", async (topic, message) => {
 
     const url = `http://demo.thingsboard.io/api/v1/${config.thingsboard.token}/telemetry`;
 
-    await axios.post(url, {
-        temperature: data.temperature,
-        kipas: action.kipas || "OFF",
-        lampu: action.lampu || "OFF"
-    }, {
-        headers: {
-            "Content-Type": "application/json"
-        }
-    });
+    // await axios.post(url, {
+    //     temperature: data.temperature,
+    //     kipas: action.kipas || "OFF",
+    //     lampu: action.lampu || "OFF"
+    // }, {
+    //     headers: {
+    //         "Content-Type": "application/json"
+    //     }
+    // });
 
 });
