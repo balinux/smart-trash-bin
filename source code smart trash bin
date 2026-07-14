@@ -1,0 +1,165 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+const char* ssid = "TJWHZF_AKG_I";          
+const char* password = "hyfourr_fi4";  
+
+const char* mqtt_server = "thingsboard.cloud"; 
+const int mqtt_port = 1883;
+const char* device_token = "zkpg2njc1je8tmf20lki"; 
+const char* telemetry_topic = "v1/devices/me/telemetry";
+
+
+const int pinTrig = 5;
+const int pinEcho = 18;
+const int pinLEDBiru = 19;   
+const int pinLEDKuning = 21; 
+
+
+const float lokasi_lat = -7.250445;
+const float lokasi_lon = 112.768845;
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+
+float bacaPersentaseKeterisian() {
+  // Nyalakan trigger sensor HC-SR04
+  digitalWrite(pinTrig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pinTrig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pinTrig, LOW);
+  
+  long durasi = pulseIn(pinEcho, HIGH, 30000);
+  
+  if (durasi == 0) {
+    return 0.0; 
+  }
+  
+ 
+  float jarak = durasi * 0.034 / 2;
+  
+  
+  float tinggiTotal = 33.33; 
+  float tinggiSampah = tinggiTotal - jarak;
+  float persentase = (tinggiSampah / tinggiTotal) * 100.0;
+  
+ 
+  if (persentase < 0) persentase = 0.0;
+  if (persentase > 100) persentase = 100.0;
+  
+ 
+  Serial.print("Jarak sampah ke sensor: ");
+  Serial.print(jarak);
+  Serial.print(" cm -> Keterisian: ");
+  Serial.print(persentase);
+  Serial.println("%");
+
+  return persentase;
+}
+
+
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Menghubungkan ke ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi Terhubung!");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+}
+
+
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Mencoba koneksi MQTT ke ThingsBoard...");
+    
+   
+    if (client.connect("ESP32_SmartWaste_Klmpk5", device_token, NULL)) {
+      Serial.println("Terhubung ke Broker ThingsBoard!");
+    } else {
+      Serial.print("Gagal, status kode error client=");
+      Serial.print(client.state());
+      Serial.println(" Mencoba lagi dalam 5 detik...");
+      delay(5000);
+    }
+  }
+}
+
+
+void setup() {
+  Serial.begin(115200);
+  
+  
+  pinMode(pinTrig, OUTPUT);
+  pinMode(pinEcho, INPUT);
+  pinMode(pinLEDBiru, OUTPUT);
+  pinMode(pinLEDKuning, OUTPUT);
+  
+
+  digitalWrite(pinLEDBiru, LOW);
+  digitalWrite(pinLEDKuning, LOW);
+  
+
+  setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+}
+
+
+void loop() {
+ 
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+ 
+  float nilaiKeterisian = bacaPersentaseKeterisian();
+  String statusLED = "Kuning";
+
+ 
+  if (nilaiKeterisian >= 85.0) {
+    digitalWrite(pinLEDBiru, HIGH);    // LED Biru Menyala (Penuh / Jarak <= 5cm)
+    digitalWrite(pinLEDKuning, LOW);   // LED Kuning Mati
+    statusLED = "Biru";
+  } else {
+    digitalWrite(pinLEDBiru, LOW);     // LED Biru Mati
+    digitalWrite(pinLEDKuning, HIGH);  // LED Kuning Menyala (Aman / Jarak > 5cm)
+    statusLED = "Kuning";
+  }
+
+
+  JsonDocument doc; 
+  doc["keterisian"] = nilaiKeterisian;
+  doc["latitude"] = lokasi_lat;
+  doc["longitude"] = lokasi_lon;
+  doc["status_led"] = statusLED;     
+
+ 
+  char jsonBuffer[256];
+  serializeJson(doc, jsonBuffer);
+
+  
+  Serial.print("Mengirim payload ke ThingsBoard: ");
+  Serial.println(jsonBuffer);
+  
+  if (client.publish(telemetry_topic, jsonBuffer)) {
+    Serial.println("Data berhasil terkirim dan sinkron dengan dashboard!");
+  } else {
+    Serial.println("Data gagal terkirim, periksa jaringan atau token.");
+  }
+
+
+  delay(1000); 
+}
